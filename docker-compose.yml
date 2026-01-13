@@ -1,0 +1,181 @@
+# ShadowDesk Local Development Docker Compose
+# ===========================================
+# IMPORTANT: These are DEFAULT LOCAL DEVELOPMENT credentials only.
+# They are intentionally included for local development and demonstration.
+#
+# - NOT production credentials
+# - NOT connected to real trading accounts (demo/paper trading only)
+# - Should be changed for any real deployment
+#
+# Production secrets are managed via HashiCorp Vault + Sealed Secrets for K8s.
+
+x-common-runtime-env: &common-runtime-env
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: shadowdesk
+  MINIO_SECRET_KEY: shadowdesk123
+  VAULT_URL: http://vault:8200
+  VAULT_TOKEN: shadowdesk-devtoken
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+
+services:
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: shadowdesk
+      MINIO_ROOT_PASSWORD: shadowdesk123
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - minio_data:/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    ports:
+      - "16333:6333"
+      - "16334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  mlflow:
+    build:
+      context: ./project
+      dockerfile: docker/mlflow.Dockerfile
+    ports:
+      - "15000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/').read()"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  vault:
+    image: hashicorp/vault:1.18.0
+    command:
+      - server
+      - -dev
+      - -dev-root-token-id=shadowdesk-devtoken
+      - -dev-listen-address=0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "18200:8200"
+    healthcheck:
+      test:
+        - CMD
+        - vault
+        - status
+        - -address=http://127.0.0.1:8200
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "19090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "13000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  fastapi:
+    build:
+      context: ./project
+      dockerfile: docker/fastapi.Dockerfile
+    environment:
+      <<: *common-runtime-env
+      MINIO_BUCKET: stock-data
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      ALPACA_PAPER: "true"
+    ports:
+      - "18000:8000"
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  streamlit:
+    build:
+      context: ./project
+      dockerfile: docker/streamlit.Dockerfile
+    environment:
+      <<: *common-runtime-env
+      FASTAPI_BASE: http://fastapi:8000
+      DASHBOARD_PASSWORD: shadowdesk
+      DASHBOARD_REFRESH: 5
+    ports:
+      - "18501:80"
+    depends_on:
+      fastapi:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1/_stcore/health').read()"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  airflow:
+    build:
+      context: ./project
+      dockerfile: docker/airflow.Dockerfile
+    command: ["airflow", "standalone"]
+    environment:
+      <<: *common-runtime-env
+      MLFLOW_URI: http://mlflow:5000
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    ports:
+      - "18080:8080"
+    volumes:
+      - ./project/cluster_b/train/dags:/opt/airflow/dags:ro
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+
+volumes:
+  minio_data:
+  qdrant_data:
+  mlflow_data:
+  prometheus_data:
+  grafana_data:
