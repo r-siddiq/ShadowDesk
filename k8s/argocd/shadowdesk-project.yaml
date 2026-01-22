@@ -1,0 +1,32 @@
+# ShadowDesk ArgoCD Project
+# Defines the project boundaries for ShadowDesk applications
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shadowdesk
+  namespace: argocd
+  # Finalizer ensures clean deletion
+spec:
+  description: ShadowDesk ML Platform Project
+  # Allow applications to deploy to these namespaces
+  destinations:
+    - namespace: shadowdesk-storage
+      server: https://kubernetes.default.svc
+    - namespace: shadowdesk-compute
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+
+  # Allow deployments from these sources
+  sourceRepos:
+    - https://github.com/shadowdesk/shadowdesk.git
+    - git@github.com:shadowdesk/shadowdesk.git
+    - http://localhost
+    - file://../helm/shadowdesk-infra
+    - file://../helm/shadowdesk-compute
+
+  # Only allow sync to listed namespaces
+  sourceNamespaces:
+    - shadowdesk-storage
+    - shadowdesk-compute

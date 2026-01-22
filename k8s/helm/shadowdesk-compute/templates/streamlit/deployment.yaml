@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-compute.fullname" . }}-streamlit
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: streamlit
+    chart: {{ include "shadowdesk-compute.chart" . }}
+spec:
+  replicas: {{ .Values.streamlit.replicas }}
+  selector:
+    matchLabels:
+      app: streamlit
+  template:
+    metadata:
+      labels:
+        app: streamlit
+    spec:
+      containers:
+        - name: streamlit
+          image: "{{ .Values.streamlit.image.repository }}:{{ .Values.streamlit.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.streamlit.service.port }}
+          env:
+            - name: MINIO_ENDPOINT
+              value: {{ .Values.externalServices.minio.endpoint }}
+            - name: QDRANT_ENDPOINT
+              value: {{ .Values.externalServices.qdrant.endpoint }}
+            - name: MLFLOW_ENDPOINT
+              value: {{ .Values.externalServices.mlflow.endpoint }}
+            - name: FASTAPI_BASE
+              value: "http://fastapi:{{ .Values.fastapi.service.port }}"
+            - name: DASHBOARD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: shadowdesk-streamlit-secret
+                  key: dashboard-password
+            - name: DASHBOARD_REFRESH
+              value: {{ .Values.streamlit.refreshInterval | default "5" | quote }}
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: http

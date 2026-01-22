@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-infra.fullname" . }}-vault
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: vault
+    chart: {{ include "shadowdesk-infra.chart" . }}
+spec:
+  replicas: {{ .Values.vault.replicas }}
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      containers:
+        - name: vault
+          image: "{{ .Values.vault.image.repository }}:{{ .Values.vault.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.vault.service.port }}
+          env:
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: {{ .Values.vault.devRootToken | quote }}
+            - name: VAULT_DEV_LISTEN_ADDRESS
+              value: "0.0.0.0:{{ .Values.vault.service.port }}"
+          args:
+            {{- if .Values.vault.devMode }}
+            - "dev"
+            {{- else }}
+            - "server"
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /v1/sys/health?standbycode=200
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health?standbycode=200
+              port: http

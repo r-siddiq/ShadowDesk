@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-compute.fullname" . }}-fastapi
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: fastapi
+    chart: {{ include "shadowdesk-compute.chart" . }}
+spec:
+  replicas: {{ .Values.fastapi.replicas }}
+  selector:
+    matchLabels:
+      app: fastapi
+  template:
+    metadata:
+      labels:
+        app: fastapi
+    spec:
+      containers:
+        - name: fastapi
+          image: "{{ .Values.fastapi.image.repository }}:{{ .Values.fastapi.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.fastapi.service.port }}
+          env:
+            - name: MINIO_ENDPOINT
+              value: {{ .Values.externalServices.minio.endpoint }}
+            - name: QDRANT_ENDPOINT
+              value: {{ .Values.externalServices.qdrant.endpoint }}
+            - name: MLFLOW_ENDPOINT
+              value: {{ .Values.externalServices.mlflow.endpoint }}
+            - name: VAULT_ENDPOINT
+              value: {{ .Values.externalServices.vault.endpoint }}
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: shadowdesk-minio-secret
+                  key: minio-access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: shadowdesk-minio-secret
+                  key: minio-secret-key
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: shadowdesk-vault-secret
+                  key: vault-token
+            - name: MINIO_BUCKET
+              value: {{ .Values.fastapi.minioBucket | default "stock-data" }}
+            - name: ALPACA_PAPER
+              value: {{ .Values.fastapi.alpacaPaper | default "true" | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http

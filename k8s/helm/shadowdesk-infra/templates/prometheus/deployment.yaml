@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-infra.fullname" . }}-prometheus
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: prometheus
+    chart: {{ include "shadowdesk-infra.chart" . }}
+spec:
+  replicas: {{ .Values.prometheus.replicas }}
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: "{{ .Values.prometheus.image.repository }}:{{ .Values.prometheus.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.prometheus.service.port }}
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.retention.time={{ .Values.prometheus.config.retention }}"
+            - "--storage.tsdb.path=/prometheus"
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+          volumeMounts:
+            - name: prometheus-data
+              mountPath: /prometheus
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+              readOnly: true
+      volumes:
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: {{ include "shadowdesk-infra.fullname" . }}-prometheus
+        - name: prometheus-config
+          configMap:
+            name: {{ include "shadowdesk-infra.fullname" . }}-prometheus-config

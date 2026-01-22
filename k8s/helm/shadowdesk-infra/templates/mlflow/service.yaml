@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "shadowdesk-infra.fullname" . }}-mlflow
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: {{ .Values.mlflow.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.mlflow.service.port }}
+      targetPort: http
+  selector:
+    app: mlflow

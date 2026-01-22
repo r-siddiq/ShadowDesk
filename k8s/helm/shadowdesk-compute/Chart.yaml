@@ -1,0 +1,14 @@
+apiVersion: v2
+name: shadowdesk-compute
+description: ShadowDesk Compute/Trading Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - shadowdesk
+  - compute
+  - trading
+  - airflow
+maintainers:
+  - name: ShadowDesk
+    email: shadowdesk@example.com

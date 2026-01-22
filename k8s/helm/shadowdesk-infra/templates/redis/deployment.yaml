@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-infra.fullname" . }}-redis
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: redis
+    chart: {{ include "shadowdesk-infra.chart" . }}
+spec:
+  replicas: {{ .Values.redis.replicas }}
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.redis.service.port }}
+          args:
+            - "--save"
+            - ""
+            - "--appendonly"
+            - "no"
+          livenessProbe:
+            tcpSocket:
+              port: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          {{- if .Values.redis.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "shadowdesk-infra.fullname" . }}-redis
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

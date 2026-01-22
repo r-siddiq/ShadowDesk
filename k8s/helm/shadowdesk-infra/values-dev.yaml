@@ -1,0 +1,66 @@
+# Development values - single cluster mode
+global:
+  namespace: shadowdesk-storage
+
+minio:
+  replicas: 1
+  persistence:
+    size: 5Gi
+  service:
+    type: NodePort
+    apiPort: 9000
+    consolePort: 9001
+    apiNodePort: 30001
+    consoleNodePort: 30002
+
+qdrant:
+  replicas: 1
+  persistence:
+    size: 10Gi
+  service:
+    type: NodePort
+    restPort: 6333
+    grpcPort: 6334
+    restNodePort: 30003
+    grpcNodePort: 30004
+
+mlflow:
+  replicas: 1
+  persistence:
+    size: 2Gi
+
+vault:
+  replicas: 1
+  devMode: true
+  service:
+    type: NodePort
+    port: 8200
+    nodePort: 30005
+
+prometheus:
+  replicas: 1
+  service:
+    type: NodePort
+    port: 9090
+    nodePort: 30006
+
+grafana:
+  replicas: 1
+  persistence:
+    size: 1Gi
+  service:
+    type: NodePort
+    port: 3000
+    nodePort: 30007
+
+redis:
+  replicas: 1
+  persistence:
+    size: 512Mi
+  service:
+    type: NodePort
+    port: 6379
+    nodePort: 30011
+
+ingress:
+  enabled: false

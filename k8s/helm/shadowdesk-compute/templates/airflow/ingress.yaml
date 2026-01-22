@@ -1,0 +1,20 @@
+{{- if .Values.airflow.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "shadowdesk-compute.fullname" . }}-airflow
+  namespace: {{ .Values.global.namespace }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | default "nginx" }}
+  rules:
+    - host: {{ .Values.airflow.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "shadowdesk-compute.fullname" . }}-airflow
+                port:
+                  number: {{ .Values.airflow.service.port }}
+{{- end }}

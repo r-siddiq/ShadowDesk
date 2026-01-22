@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-infra.fullname" . }}-grafana
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: grafana
+    chart: {{ include "shadowdesk-infra.chart" . }}
+spec:
+  replicas: {{ .Values.grafana.replicas }}
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: "{{ .Values.grafana.image.repository }}:{{ .Values.grafana.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.grafana.service.port }}

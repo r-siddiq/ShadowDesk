@@ -1,0 +1,134 @@
+# Global values
+global:
+  clusterName: "shadowdesk-infra"
+  namespace: "shadowdesk-storage"
+
+# MinIO configuration
+minio:
+  enabled: true
+  replicas: 1
+  image:
+    repository: minio/minio
+    tag: latest
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: standard
+  service:
+    type: NodePort
+    apiPort: 9000
+    consolePort: 9001
+  credentials:
+    existingSecret: "shadowdesk-minio-secret"
+    accessKeyKey: "minio-access-key"
+    secretKeyKey: "minio-secret-key"
+
+# Qdrant configuration
+qdrant:
+  enabled: true
+  replicas: 1
+  image:
+    repository: qdrant/qdrant
+    tag: latest
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: standard
+  service:
+    type: NodePort
+    restPort: 6333
+    grpcPort: 6334
+
+# MLflow configuration
+mlflow:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/shadowdesk/mlflow
+    tag: latest
+  persistence:
+    enabled: true
+    size: 5Gi
+  service:
+    type: ClusterIP
+    port: 5000
+
+# Vault configuration
+vault:
+  enabled: true
+  replicas: 1
+  image:
+    repository: hashicorp/vault
+    tag: latest
+  service:
+    type: NodePort
+    port: 8200
+  devMode: true
+  # IMPORTANT: Set via SealedSecret or --set at install time. Do NOT hardcode real tokens here.
+  # In production (devMode: false), use proper unseal keys via Vault's transit secret engine.
+  devRootToken: ""
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  replicas: 1
+  image:
+    repository: prom/prometheus
+    tag: latest
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: standard
+  service:
+    type: NodePort
+    port: 9090
+  config:
+    enabled: true
+    retention: 15d
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9090']
+        - job_name: 'qdrant'
+          static_configs:
+            - targets: ['qdrant:6333']
+
+# Grafana configuration
+grafana:
+  enabled: true
+  replicas: 1
+  image:
+    repository: grafana/grafana
+    tag: latest
+  service:
+    type: NodePort
+    port: 3000
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: standard
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+
+# Redis configuration (required for Airflow CeleryExecutor)
+redis:
+  enabled: true
+  replicas: 1
+  image:
+    repository: redis
+    tag: "7-alpine"
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: standard
+  service:
+    type: ClusterIP
+    port: 6379

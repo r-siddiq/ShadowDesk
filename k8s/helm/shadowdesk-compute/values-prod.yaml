@@ -1,0 +1,42 @@
+# Production values - dual cluster mode
+global:
+  clusterName: "shadowdesk-compute"
+  namespace: "shadowdesk-compute"
+
+airflow:
+  executor: CeleryExecutor
+  webserver:
+    replicas: 2
+  scheduler:
+    replicas: 2
+  workers:
+    replicas: 4
+  service:
+    type: LoadBalancer
+    port: 8080
+  redis:
+    host: "redis.shadowdesk-storage.svc.cluster.local"
+    port: 6379
+
+fastapi:
+  replicas: 3
+  service:
+    type: LoadBalancer
+  ingress:
+    enabled: true
+    host: api.shadowdesk.com
+  minioBucket: "stock-data"
+  alpacaPaper: "true"
+
+streamlit:
+  replicas: 2
+  service:
+    type: LoadBalancer
+  ingress:
+    enabled: true
+    host: dashboard.shadowdesk.com
+  refreshInterval: "2"
+
+ingress:
+  enabled: true
+  className: nginx

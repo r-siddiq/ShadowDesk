@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-infra.fullname" . }}-qdrant
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: qdrant
+    chart: {{ include "shadowdesk-infra.chart" . }}
+spec:
+  replicas: {{ .Values.qdrant.replicas }}
+  selector:
+    matchLabels:
+      app: qdrant
+  template:
+    metadata:
+      labels:
+        app: qdrant
+    spec:
+      containers:
+        - name: qdrant
+          image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag }}"
+          ports:
+            - name: rest
+              containerPort: {{ .Values.qdrant.service.restPort }}
+            - name: grpc
+              containerPort: {{ .Values.qdrant.service.grpcPort }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: rest
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: rest

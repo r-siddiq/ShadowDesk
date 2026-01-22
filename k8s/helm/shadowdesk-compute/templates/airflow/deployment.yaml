@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "shadowdesk-compute.fullname" . }}-airflow
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: airflow
+    chart: {{ include "shadowdesk-compute.chart" . }}
+spec:
+  replicas: {{ .Values.airflow.webserver.replicas }}
+  selector:
+    matchLabels:
+      app: airflow
+  template:
+    metadata:
+      labels:
+        app: airflow
+    spec:
+      containers:
+        - name: airflow-webserver
+          image: "{{ .Values.airflow.image.repository }}:{{ .Values.airflow.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.airflow.service.port }}
+          env:
+            - name: AIRFLOW_EXECUTOR
+              value: {{ .Values.airflow.executor }}
+            {{- if .Values.airflow.redis }}
+            - name: AIRFLOW__CELERY__RESULT_BACKEND
+              value: "redis://{{ .Values.airflow.redis.host }}:{{ .Values.airflow.redis.port }}/0"
+            - name: AIRFLOW__CELERY__BROKER_URL
+              value: "redis://{{ .Values.airflow.redis.host }}:{{ .Values.airflow.redis.port }}/1"
+            {{- end }}
+          args:
+            - "webserver"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          volumeMounts:
+            - name: airflow-dags
+              mountPath: /opt/airflow/dags
+              readOnly: true
+      volumes:
+        - name: airflow-dags
+          emptyDir: {}

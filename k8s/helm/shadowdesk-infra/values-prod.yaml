@@ -1,0 +1,51 @@
+# Production values - dual cluster mode
+global:
+  namespace: shadowdesk-storage
+
+minio:
+  replicas: 4
+  persistence:
+    size: 100Gi
+    storageClass: fast-ssd
+  service:
+    type: LoadBalancer
+
+qdrant:
+  replicas: 3
+  persistence:
+    size: 50Gi
+    storageClass: fast-ssd
+  service:
+    type: LoadBalancer
+
+mlflow:
+  replicas: 2
+  persistence:
+    size: 10Gi
+
+vault:
+  replicas: 3
+  devMode: false
+
+prometheus:
+  replicas: 2
+  config:
+    retention: 30d
+
+grafana:
+  replicas: 2
+  persistence:
+    size: 5Gi
+    storageClass: fast-ssd
+
+redis:
+  replicas: 3
+  persistence:
+    size: 5Gi
+    storageClass: fast-ssd
+  service:
+    type: LoadBalancer
+
+ingress:
+  enabled: true
+  className: nginx

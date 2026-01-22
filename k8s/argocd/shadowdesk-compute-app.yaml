@@ -1,0 +1,69 @@
+# ArgoCD Application for ShadowDesk Compute (Airflow/FastAPI/Streamlit)
+# Syncs the shadowdesk-compute Helm chart to the shadowdesk-compute namespace
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shadowdesk-compute
+  namespace: argocd
+  labels:
+    app: shadowdesk-compute
+    chart: shadowdesk-compute
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # Project reference (must match AppProject.metadata.name)
+  project: shadowdesk
+
+  # Source configuration (Helm chart location)
+  source:
+    # For GitOps, point to repoURL. For local dev, use file:// path.
+    # Change this to your Git repository URL in production.
+    repoURL: https://github.com/shadowdesk/shadowdesk.git
+    targetRevision: main
+    path: k8s/helm/shadowdesk-compute
+
+    # Helm-specific configuration
+    helm:
+      # Value file to use (relative to chart path)
+      valueFiles:
+        - values-prod.yaml
+      # Optional: Pass individual values
+      parameters:
+        - name: global.namespace
+          value: shadowdesk-compute
+
+  # Destination (where to deploy)
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shadowdesk-compute
+
+  # Sync policy
+  syncPolicy:
+    automated:
+      # Automatically sync when detects drift
+      selfHeal: true
+      # Automatically prune deleted resources
+      prune: true
+    # Sync options
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    # Retry configuration
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Ignore differences for fields that change during runtime
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+  # Dependencies (infra should be synced before compute)
+  dependencies:
+    - name: shadowdesk-infra

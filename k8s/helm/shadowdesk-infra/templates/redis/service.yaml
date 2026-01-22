@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "shadowdesk-infra.fullname" . }}-redis
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: redis
+    chart: {{ include "shadowdesk-infra.chart" . }}
+spec:
+  type: {{ .Values.redis.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.redis.service.port }}
+      targetPort: http
+      {{- if and (eq .Values.redis.service.type "NodePort") .Values.redis.service.nodePort }}
+      nodePort: {{ .Values.redis.service.nodePort }}
+      {{- end }}
+  selector:
+    app: redis

@@ -1,0 +1,64 @@
+global:
+  clusterName: "shadowdesk-compute"
+  namespace: "shadowdesk-compute"
+
+# Airflow configuration
+airflow:
+  enabled: true
+  executor: SequentialExecutor
+  webserver:
+    replicas: 1
+  scheduler:
+    replicas: 1
+  workers:
+    replicas: 1
+  image:
+    repository: ghcr.io/shadowdesk/airflow
+    tag: latest
+  service:
+    type: LoadBalancer
+    port: 8080
+
+# FastAPI configuration
+fastapi:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/shadowdesk/fastapi
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 8000
+  ingress:
+    enabled: false
+    host: api.shadowdesk.local
+  minioBucket: "stock-data"
+  alpacaPaper: "true"
+
+# Streamlit configuration
+streamlit:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/shadowdesk/streamlit
+    tag: latest
+  service:
+    type: NodePort
+    port: 80
+  ingress:
+    enabled: false
+    host: dashboard.shadowdesk.local
+  refreshInterval: "5"
+
+# External service connections (pointing to shadowdesk-storage namespace)
+externalServices:
+  minio:
+    endpoint: "minio.shadowdesk-storage.svc.cluster.local:9000"
+  qdrant:
+    endpoint: "qdrant.shadowdesk-storage.svc.cluster.local:6333"
+  mlflow:
+    endpoint: "mlflow.shadowdesk-storage.svc.cluster.local:5000"
+  vault:
+    endpoint: "http://vault.shadowdesk-storage.svc.cluster.local:8200"
+  redis:
+    endpoint: "redis.shadowdesk-storage.svc.cluster.local:6379"

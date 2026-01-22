@@ -1,0 +1,262 @@
+# ArgoCD Installation for kind (Kubernetes in Docker)
+# Usage: kubectl apply -f argocd-install.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    name: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-applicationset-controller
+  namespace: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-notifications-controller
+  namespace: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-server
+  namespace: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-application-controller
+  namespace: argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-server
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- nonResourceURLs:
+  - '*'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-server-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-server
+subjects:
+- kind: ServiceAccount
+  name: argocd-server
+  namespace: argocd
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  ui.banner.content: |
+    Welcome to ShadowDesk ArgoCD (Development)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-notifications-controller
+  namespace: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: argocd-notifications-controller
+  template:
+    metadata:
+      labels:
+        app: argocd-notifications-controller
+    spec:
+      serviceAccountName: argocd-notifications-controller
+      containers:
+      - name: notifications-controller
+        image: quay.io/argoproj/argocd:v2.11.0
+        command:
+        - argocd-notifications
+        - run
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-applicationset-controller
+  namespace: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: argocd-applicationset-controller
+  template:
+    metadata:
+      labels:
+        app: argocd-applicationset-controller
+    spec:
+      serviceAccountName: argocd-applicationset-controller
+      containers:
+      - name: applicationset-controller
+        image: quay.io/argoproj/argocd:v2.11.0
+        command:
+        - argocd-applicationset-controller
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: argocd-dex-server
+  template:
+    metadata:
+      labels:
+        app: argocd-dex-server
+    spec:
+      serviceAccountName: argocd-dex-server
+      containers:
+      - name: dex
+        image: ghcr.io/argoproj/argo-cd/v2.11.0/dex:v2.38.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: argocd-server
+  template:
+    metadata:
+      labels:
+        app: argocd-server
+    spec:
+      serviceAccountName: argocd-server
+      containers:
+      - name: argocd-server
+        image: quay.io/argoproj/argocd:v2.11.0
+        command:
+        - argocd-server
+        - --staticassets
+        - /shared
+        - --repo-server
+        - argocd-repo-server:8081
+        env:
+        - name: ARGOCD_SERVER_INSECURE
+          value: "true"
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: argocd-application-controller
+  namespace: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: argocd-application-controller
+  serviceName: argocd-application-controller
+  template:
+    metadata:
+      labels:
+        app: argocd-application-controller
+    spec:
+      serviceAccountName: argocd-application-controller
+      containers:
+      - name: application-controller
+        image: quay.io/argoproj/argocd:v2.11.0
+        command:
+        - argocd-application-controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+spec:
+  ports:
+  - port: 8081
+  selector:
+    app: argocd-repo-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+spec:
+  ports:
+  - name: http
+    port: 5556
+    targetPort: 5556
+  selector:
+    app: argocd-dex-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    nodePort: 30080
+  - name: https
+    port: 8081
+    targetPort: 8081
+    nodePort: 30081
+  selector:
+    app: argocd-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-application-controller
+  namespace: argocd
+spec:
+  clusterIP: None
+  ports:
+  - port: 8082
+  selector:
+    app: argocd-application-controller
+---
+# NOTE: ArgoCD auto-generates the initial admin password on first install.
+# Retrieve it with: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+# Change it immediately after first login via the ArgoCD UI.

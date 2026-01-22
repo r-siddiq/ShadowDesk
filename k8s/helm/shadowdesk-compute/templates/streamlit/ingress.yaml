@@ -1,0 +1,20 @@
+{{- if .Values.streamlit.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "shadowdesk-compute.fullname" . }}-streamlit
+  namespace: {{ .Values.global.namespace }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | default "nginx" }}
+  rules:
+    - host: {{ .Values.streamlit.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "shadowdesk-compute.fullname" . }}-streamlit
+                port:
+                  number: {{ .Values.streamlit.service.port }}
+{{- end }}

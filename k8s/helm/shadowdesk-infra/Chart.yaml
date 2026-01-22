@@ -1,0 +1,14 @@
+apiVersion: v2
+name: shadowdesk-infra
+description: ShadowDesk Storage/Infrastructure Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - shadowdesk
+  - storage
+  - ml-platform
+  - observability
+maintainers:
+  - name: ShadowDesk
+    email: shadowdesk@example.com

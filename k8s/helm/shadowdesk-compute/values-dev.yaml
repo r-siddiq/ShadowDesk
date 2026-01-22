@@ -1,0 +1,41 @@
+# Development values - single cluster mode
+global:
+  clusterName: "shadowdesk-compute"
+  namespace: "shadowdesk-compute"
+
+airflow:
+  executor: SequentialExecutor
+  webserver:
+    replicas: 1
+  scheduler:
+    replicas: 1
+  workers:
+    replicas: 1
+  service:
+    type: NodePort
+    port: 8080
+    nodePort: 30010
+
+fastapi:
+  replicas: 1
+  service:
+    type: NodePort
+    port: 8000
+    nodePort: 30008
+  ingress:
+    enabled: false
+  minioBucket: "stock-data"
+  alpacaPaper: "true"
+
+streamlit:
+  replicas: 1
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30009
+  ingress:
+    enabled: false
+  refreshInterval: "5"
+
+ingress:
+  enabled: false
