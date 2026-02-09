@@ -1,0 +1,10 @@
+# Dashboard dependencies are consolidated in project/requirements.txt
+# Install all project dependencies: pip install -r ../requirements.txt
+#
+# Dashboard-specific additions (already in ../requirements.txt):
+#   streamlit>=1.30.0
+#   streamlit-lightweight-charts>=0.1.0
+#   streamlit-autorefresh>=1.0.0
+#   hvac>=2.0.0
+#   websocket-client>=1.6.0
+#   pyarrow>=14.0.0

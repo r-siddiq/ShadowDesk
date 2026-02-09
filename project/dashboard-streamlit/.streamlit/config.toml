@@ -1,0 +1,20 @@
+[server]
+port = 80
+enableCORS = true
+enableXsrfProtection = false
+address = "0.0.0.0"
+headless = true
+
+[theme]
+# Custom dark theme matching Shadow Alpha
+primaryColor = "#00d4ff"
+backgroundColor = "#0a0a0f"
+secondaryBackgroundColor = "#141420"
+textColor = "#e2e8f0"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
+
+[runner]
+fastReruns = true
